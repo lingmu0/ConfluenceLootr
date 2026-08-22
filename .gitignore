@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+
+# NeoForge development runtime
+run/
+
+# IDEs
+.idea/
+*.iml
+out/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

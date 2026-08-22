@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.xuwu.confluencelootr.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "confluence_lootr.refmap.json",
+  "mixins": [
+    "BaseChestBlockEntityMixin",
+    "BiomeChestBlockEntityMixin",
+    "BlockEntityMixin",
+    "BlockMixin",
+    "ChestBlockEntityOpenersMixin",
+    "ChestBlockMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
