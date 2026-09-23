@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** A subtle sparkle is visible only to players who have not opened this loot chest. */
+/** Visible enchantment sparkles are shown only to players who have not opened this loot chest. */
 @Mixin(ChestBlockEntity.class)
 public abstract class ChestBlockEntityTickMixin {
     @Inject(method = "lidAnimateTick", at = @At("TAIL"))
@@ -23,12 +23,19 @@ public abstract class ChestBlockEntityTickMixin {
                 || !(chest instanceof ConfluenceLootrAccess access)
                 || Minecraft.getInstance().player == null
                 || access.getOpeners().contains(Minecraft.getInstance().player.getUUID())
-                || level.random.nextInt(8) != 0) {
+                || level.random.nextInt(4) != 0) {
             return;
         }
-        double x = pos.getX() + 0.15 + level.random.nextDouble() * 0.7;
-        double y = pos.getY() + 0.65 + level.random.nextDouble() * 0.45;
-        double z = pos.getZ() + 0.15 + level.random.nextDouble() * 0.7;
-        level.addParticle(ParticleTypes.ENCHANT, x, y, z, 0, 0.02, 0);
+
+        // Spawn a small cluster above the lid so the chest does not occlude the particles.
+        for (int i = 0; i < 3; i++) {
+            double x = pos.getX() + 0.1 + level.random.nextDouble() * 0.8;
+            double y = pos.getY() + 0.95 + level.random.nextDouble() * 0.45;
+            double z = pos.getZ() + 0.1 + level.random.nextDouble() * 0.8;
+            double dx = (level.random.nextDouble() - 0.5) * 0.02;
+            double dy = 0.025 + level.random.nextDouble() * 0.025;
+            double dz = (level.random.nextDouble() - 0.5) * 0.02;
+            level.addParticle(ParticleTypes.ENCHANT, x, y, z, dx, dy, dz);
+        }
     }
 }
