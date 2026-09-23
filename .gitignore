@@ -1,8 +1,9 @@
 # Gradle
 .gradle/
 build/
+.tmp-deps/
 
-# NeoForge development runtime
+# Development runtime
 run/
 
 # IDEs

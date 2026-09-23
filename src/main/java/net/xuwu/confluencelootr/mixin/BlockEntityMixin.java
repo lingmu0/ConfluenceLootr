@@ -1,8 +1,6 @@
 package net.xuwu.confluencelootr.mixin;
 
-import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -16,65 +14,54 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Persists Lootr's per-container identity and opener state on the original Confluence entity. */
+/** Persists the Lootr identity and each player's opened state on the original chest entity. */
 @Mixin(BlockEntity.class)
 public abstract class BlockEntityMixin {
-    @Inject(method = "loadAdditional", at = @At("TAIL"))
-    private void confluenceLootr$loadAdditional(CompoundTag tag, HolderLookup.Provider provider, CallbackInfo ci) {
+    @Inject(method = "load", at = @At("TAIL"))
+    private void confluenceLootr$load(CompoundTag tag, CallbackInfo ci) {
         if ((Object) this instanceof ConfluenceLootrAccess access) {
-            boolean hasLootTableData = tag.contains("LootTable", Tag.TAG_STRING);
-            if (hasLootTableData || tag.getBoolean(ConfluenceLootrCompatibility.CONVERTED_MARKER)) {
-                access.confluenceLootr$setConverted(true);
-            }
-            if (hasLootTableData || ConfluenceLootrCompatibility.isLootrChest((BlockEntity) (Object) this)) {
-                access.confluenceLootr$loadAdditional(tag, provider);
-            }
+            access.confluenceLootr$load(tag);
         }
     }
 
     @Inject(method = "saveAdditional", at = @At("TAIL"))
-    private void confluenceLootr$saveAdditional(CompoundTag tag, HolderLookup.Provider provider, CallbackInfo ci) {
+    private void confluenceLootr$save(CompoundTag tag, CallbackInfo ci) {
         if ((Object) this instanceof ConfluenceLootrAccess access
                 && ConfluenceLootrCompatibility.isLootrChest((BlockEntity) (Object) this)) {
-            access.confluenceLootr$saveAdditional(tag, provider);
-            if (!access.confluenceLootr$isSavingToItem()) {
-                tag.putBoolean(ConfluenceLootrCompatibility.CONVERTED_MARKER, true);
-            }
-        }
-    }
-
-    @Inject(method = "saveToItem", at = @At("HEAD"))
-    private void confluenceLootr$startSavingToItem(ItemStack stack, HolderLookup.Provider provider, CallbackInfo ci) {
-        if ((Object) this instanceof ConfluenceLootrAccess access
-                && ConfluenceLootrCompatibility.isLootrChest((BlockEntity) (Object) this)) {
-            access.confluenceLootr$setSavingToItem(true);
+            access.confluenceLootr$save(tag);
         }
     }
 
     @Inject(method = "saveToItem", at = @At("RETURN"))
-    private void confluenceLootr$stopSavingToItem(ItemStack stack, HolderLookup.Provider provider, CallbackInfo ci) {
-        if ((Object) this instanceof ConfluenceLootrAccess access
-                && ConfluenceLootrCompatibility.isLootrChest((BlockEntity) (Object) this)) {
-            access.confluenceLootr$setSavingToItem(false);
+    private void confluenceLootr$clearItemData(ItemStack item, CallbackInfo ci) {
+        if ((Object) this instanceof ConfluenceLootrAccess) {
+            CompoundTag data = item.getTagElement("BlockEntityTag");
+            if (data != null) {
+                data.remove("LootTable");
+                data.remove("LootTableSeed");
+                data.remove(ConfluenceLootrCompatibility.CONVERTED_MARKER);
+                data.remove("ConfluenceLootrId");
+                data.remove("ConfluenceLootrOpeners");
+            }
         }
     }
 
     @Inject(method = "getUpdateTag", at = @At("RETURN"), cancellable = true)
-    private void confluenceLootr$getUpdateTag(HolderLookup.Provider provider, CallbackInfoReturnable<CompoundTag> cir) {
+    private void confluenceLootr$getUpdateTag(CallbackInfoReturnable<CompoundTag> cir) {
         if ((Object) this instanceof ConfluenceLootrAccess access
                 && ConfluenceLootrCompatibility.isLootrChest((BlockEntity) (Object) this)) {
             CompoundTag tag = cir.getReturnValue();
-            access.confluenceLootr$fillUpdateTag(tag, provider);
-            tag.putBoolean(ConfluenceLootrCompatibility.CONVERTED_MARKER, true);
+            access.confluenceLootr$save(tag);
             cir.setReturnValue(tag);
         }
     }
 
     @Inject(method = "getUpdatePacket", at = @At("RETURN"), cancellable = true)
     private void confluenceLootr$getUpdatePacket(CallbackInfoReturnable<Packet<ClientGamePacketListener>> cir) {
-        if ((Object) this instanceof ConfluenceLootrAccess access
+        if ((Object) this instanceof ConfluenceLootrAccess
                 && ConfluenceLootrCompatibility.isLootrChest((BlockEntity) (Object) this)) {
-            cir.setReturnValue(ClientboundBlockEntityDataPacket.create((BlockEntity) (Object) this, BlockEntity::getUpdateTag));
+            cir.setReturnValue(ClientboundBlockEntityDataPacket.create((BlockEntity) (Object) this,
+                    BlockEntity::getUpdateTag));
         }
     }
 }

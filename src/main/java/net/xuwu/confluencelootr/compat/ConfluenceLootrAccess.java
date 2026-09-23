@@ -1,190 +1,118 @@
 package net.xuwu.confluencelootr.compat;
 
+import java.util.Set;
+import java.util.UUID;
+import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.NonNullList;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.ChestBlockEntity;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
+import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
-import noobanidus.mods.lootr.common.api.BuiltInLootrTypes;
-import noobanidus.mods.lootr.common.api.ILootrType;
-import noobanidus.mods.lootr.common.api.advancement.IContainerTrigger;
-import noobanidus.mods.lootr.common.api.data.LootrBlockType;
-import noobanidus.mods.lootr.common.api.data.SimpleLootrInstance;
-import noobanidus.mods.lootr.common.api.data.blockentity.ILootrBlockEntity;
-import noobanidus.mods.lootr.common.api.registry.LootrRegistry;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.phys.Vec3;
+import noobanidus.mods.lootr.api.LootrAPI;
+import noobanidus.mods.lootr.api.blockentity.ILootBlockEntity;
+import net.xuwu.confluencelootr.mixin.RandomizableContainerBlockEntityAccessor;
 
-/**
- * The small adapter surface mixed into Confluence's two chest entity families.
- * The default methods intentionally mirror LootrChestBlockEntity while retaining
- * Confluence's original block, renderer, inventory and lid behavior.
- */
-public interface ConfluenceLootrAccess extends ILootrBlockEntity {
-    SimpleLootrInstance confluenceLootr$getInstance();
-
+/** Shared Lootr adapter for Confluence's base and biome chest block entities. */
+public interface ConfluenceLootrAccess extends ILootBlockEntity {
     boolean confluenceLootr$isConverted();
 
     void confluenceLootr$setConverted(boolean converted);
 
-    default BlockEntity confluenceLootr$getBlockEntity() {
+    UUID confluenceLootr$getId();
+
+    void confluenceLootr$setId(UUID id);
+
+    Set<UUID> getOpeners();
+
+    default BlockEntity confluenceLootr$entity() {
         return (BlockEntity) this;
     }
 
-    default ChestBlockEntity confluenceLootr$getChest() {
-        return (ChestBlockEntity) this;
-    }
-
-    default RandomizableContainerBlockEntity confluenceLootr$getContainerEntity() {
-        return (RandomizableContainerBlockEntity) this;
+    @Override
+    default ResourceLocation getTable() {
+        return ((RandomizableContainerBlockEntityAccessor) this).confluenceLootr$getLootTable();
     }
 
     @Override
-    @Deprecated
-    default LootrBlockType getInfoBlockType() {
-        return LootrBlockType.CHEST;
+    default long getSeed() {
+        return ((RandomizableContainerBlockEntityAccessor) this).confluenceLootr$getLootTableSeed();
     }
 
     @Override
-    default ILootrType getInfoNewType() {
-        return BuiltInLootrTypes.CHEST;
+    default BlockPos getPosition() {
+        return confluenceLootr$entity().getBlockPos();
     }
 
     @Override
-    default java.util.UUID getInfoUUID() {
-        return confluenceLootr$getInstance().getInfoUUID();
+    default UUID getTileId() {
+        UUID id = confluenceLootr$getId();
+        if (id == null) {
+            id = UUID.randomUUID();
+            confluenceLootr$setId(id);
+        }
+        return id;
     }
 
     @Override
-    default String getInfoKey() {
-        return confluenceLootr$getInstance().getInfoKey();
-    }
-
-    @Override
-    default boolean hasBeenOpened() {
-        return confluenceLootr$getInstance().hasBeenOpened();
-    }
-
-    @Override
-    default boolean isPhysicallyOpen() {
-        return confluenceLootr$getChest().getOpenNess(1.0F) > 0.0F;
-    }
-
-    @Override
-    default BlockPos getInfoPos() {
-        return confluenceLootr$getBlockEntity().getBlockPos();
-    }
-
-    @Override
-    default Component getInfoDisplayName() {
-        return confluenceLootr$getContainerEntity().getDisplayName();
-    }
-
-    @Override
-    default ResourceKey<Level> getInfoDimension() {
-        return getInfoLevel().dimension();
-    }
-
-    @Override
-    default int getInfoContainerSize() {
-        return confluenceLootr$getInstance().getInfoContainerSize();
-    }
-
-    @Override
-    default NonNullList<ItemStack> getInfoReferenceInventory() {
-        return confluenceLootr$getInstance().getCustomInventory();
-    }
-
-    @Override
-    default void setInfoReferenceInventory(NonNullList<ItemStack> reference) {
-        if (reference != null) {
-            confluenceLootr$getInstance().setCustomInventory(reference);
+    default void updatePacketViaState() {
+        BlockEntity entity = confluenceLootr$entity();
+        Level level = entity.getLevel();
+        if (level != null && !level.isClientSide()) {
+            level.sendBlockUpdated(entity.getBlockPos(), entity.getBlockState(), entity.getBlockState(), 3);
         }
     }
 
     @Override
-    default boolean isInfoReferenceInventory() {
-        return isInfoReferenceInventoryInternal(confluenceLootr$getInstance().isCustomInventory());
+    default void unpackLootTable(Player player, Container inventory, ResourceLocation tableId, long seed) {
+        BlockEntity entity = confluenceLootr$entity();
+        if (!(entity.getLevel() instanceof ServerLevel level) || tableId == null) {
+            return;
+        }
+        LootTable table = level.getServer().getLootData().getLootTable(tableId);
+        if (player instanceof ServerPlayer serverPlayer) {
+            CriteriaTriggers.GENERATE_LOOT.trigger(serverPlayer, tableId);
+        }
+        LootParams.Builder params = new LootParams.Builder(level)
+                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(entity.getBlockPos()))
+                .withParameter(LootContextParams.THIS_ENTITY, player)
+                .withLuck(player.getLuck());
+        table.fill(inventory, params.create(LootContextParamSets.CHEST), LootrAPI.getLootSeed(seed));
     }
 
-    @Override
-    default ResourceKey<LootTable> getInfoLootTable() {
-        return confluenceLootr$getContainerEntity().getLootTable();
+    default void confluenceLootr$load(CompoundTag tag) {
+        if (tag.contains("LootTable", Tag.TAG_STRING)
+                || tag.getBoolean(ConfluenceLootrCompatibility.CONVERTED_MARKER)) {
+            confluenceLootr$setConverted(true);
+        }
+        if (tag.hasUUID("ConfluenceLootrId")) {
+            confluenceLootr$setId(tag.getUUID("ConfluenceLootrId"));
+        }
+        getOpeners().clear();
+        ListTag openers = tag.getList("ConfluenceLootrOpeners", Tag.TAG_INT_ARRAY);
+        for (Tag opener : openers) {
+            getOpeners().add(NbtUtils.loadUUID(opener));
+        }
     }
 
-    @Override
-    default long getInfoLootSeed() {
-        return confluenceLootr$getContainerEntity().getLootTableSeed();
-    }
-
-    @Override
-    default Level getInfoLevel() {
-        return confluenceLootr$getBlockEntity().getLevel();
-    }
-
-    @Override
-    default java.util.Set<java.util.UUID> getClientOpeners() {
-        return confluenceLootr$getInstance().getClientOpeners();
-    }
-
-    @Override
-    default boolean isClientOpened() {
-        return confluenceLootr$getInstance().isClientOpened();
-    }
-
-    @Override
-    default void setClientOpened(boolean opened) {
-        confluenceLootr$getInstance().setClientOpened(opened);
-    }
-
-    @Override
-    default void markChanged() {
-        confluenceLootr$getBlockEntity().setChanged();
-        markDataChanged();
-    }
-
-    @Override
-    default void setHasBeenOpened(boolean value) {
-        confluenceLootr$getInstance().setHasBeenOpened(value);
-    }
-
-    @Override
-    default int getPhysicalOpenerCount() {
-        return ChestBlockEntity.getOpenCount(confluenceLootr$getBlockEntity().getLevel(), getInfoPos());
-    }
-
-    @Override
-    default IContainerTrigger getTrigger() {
-        return LootrRegistry.getChestTrigger();
-    }
-
-    @Override
-    default int getRandomOffset() {
-        return confluenceLootr$getInstance().getRandomOffset();
-    }
-
-    default void confluenceLootr$loadAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
-        confluenceLootr$getInstance().loadAdditional(tag, provider);
-    }
-
-    default void confluenceLootr$saveAdditional(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
-        confluenceLootr$getInstance().saveAdditional(tag, provider, getInfoLevel() != null && getInfoLevel().isClientSide());
-    }
-
-    default void confluenceLootr$fillUpdateTag(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
-        confluenceLootr$getInstance().fillUpdateTag(tag, provider, false);
-    }
-
-    default void confluenceLootr$setSavingToItem(boolean saving) {
-        confluenceLootr$getInstance().setSavingToItem(saving);
-    }
-
-    default boolean confluenceLootr$isSavingToItem() {
-        return confluenceLootr$getInstance().isSavingToItem();
+    default void confluenceLootr$save(CompoundTag tag) {
+        tag.putBoolean(ConfluenceLootrCompatibility.CONVERTED_MARKER, true);
+        tag.putUUID("ConfluenceLootrId", getTileId());
+        ListTag openers = new ListTag();
+        for (UUID opener : getOpeners()) {
+            openers.add(NbtUtils.createUUID(opener));
+        }
+        tag.put("ConfluenceLootrOpeners", openers);
     }
 }

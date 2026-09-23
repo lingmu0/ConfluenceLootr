@@ -1,0 +1,39 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+authors = "${mod_authors}"
+description = '''${mod_description}'''
+displayURL = "https://github.com/lingmu0/ConfluenceLootr"
+
+[[dependencies.confluence_lootr]]
+modId = "forge"
+mandatory = true
+versionRange = "[47.4.20,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.confluence_lootr]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,1.21)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.confluence_lootr]]
+modId = "confluence"
+mandatory = true
+versionRange = "[1.2.6,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.confluence_lootr]]
+modId = "lootr"
+mandatory = true
+versionRange = "[0.7.35.94,)"
+ordering = "AFTER"
+side = "BOTH"
