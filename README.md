@@ -23,8 +23,11 @@
 
 - [汇流来世（Confluence: Otherworld）1.2.6 或更新的 Forge 1.20.1 版](https://www.curseforge.com/minecraft/mc-mods/confluence/files/8940876)
 - [Lootr 0.7.35.94 或更新的 Forge 1.20.1 版](https://www.curseforge.com/minecraft/mc-mods/lootr/files/7263076)
+- [MesdagPortLib 1.2.5 或更新版本](https://www.curseforge.com/minecraft/mc-mods/mesdagportlib/files/8940829)（汇流来世前置）
+- [Curios 5.14.1+1.20.1](https://www.curseforge.com/minecraft/mc-mods/curios/files/6418456)（汇流来世前置）
+- [GeckoLib 4.8.4 或更新版本](https://www.curseforge.com/minecraft/mc-mods/geckolib/files/8285794)（汇流来世前置）
 
-运行时需要单独安装上述依赖模组。
+正常安装游戏时需要安装上述依赖模组；Gradle 开发环境会自动解析这些依赖，但不会将其打包进本模组。
 
 ## 许可证
 

@@ -48,6 +48,10 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation fg.deobf("curse.maven:confluence-1209464:${confluence_file_id}")
     implementation fg.deobf("curse.maven:lootr-361276:${lootr_file_id}")
+    // CurseMaven does not provide transitive mod dependencies for Confluence.
+    runtimeOnly fg.deobf('curse.maven:mesdagportlib-1643194:8940829')
+    runtimeOnly fg.deobf('curse.maven:curios-309927:6418456')
+    runtimeOnly fg.deobf('curse.maven:geckolib-388172:8285794')
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
 
